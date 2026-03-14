@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GlowVault</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:#1C1410;--rose:#C4685A;--blush:#E8C4B8;--petal:#F5E6DF;
+    --gold:#C8A46A;--cream:#FBF7F3;--sage:#7FA87A;--lilac:#9E8FB5;
+    --warm:#7A5C52;--soft:#F9F0EB;--white:#FFFFFF;
+    --shadow:0 4px 24px rgba(28,20,16,.10);
+    --shadow-lg:0 12px 48px rgba(28,20,16,.16);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);overflow:hidden}
+
+  /* ── AUTH SCREEN ── */
+  #auth-screen{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:32px}
+  .auth-logo{font-family:'Playfair Display',serif;font-size:42px;font-weight:900;color:var(--gold);letter-spacing:.04em;margin-bottom:8px}
+  .auth-logo span{font-style:italic;color:var(--blush)}
+  .auth-sub{color:rgba(255,255,255,.4);font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:48px}
+  .auth-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:36px;width:100%;max-width:380px}
+  .auth-tabs{display:flex;gap:0;margin-bottom:28px;background:rgba(255,255,255,.06);border-radius:12px;padding:4px}
+  .auth-tab{flex:1;padding:10px;border:none;background:none;color:rgba(255,255,255,.45);font-family:'DM Sans',sans-serif;font-size:14px;border-radius:9px;cursor:pointer;transition:all .2s}
+  .auth-tab.active{background:var(--rose);color:#fff}
+  .auth-input{width:100%;padding:14px 18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-bottom:12px;transition:border-color .2s}
+  .auth-input::placeholder{color:rgba(255,255,255,.3)}
+  .auth-input:focus{border-color:var(--rose)}
+  .auth-btn{width:100%;padding:15px;background:var(--rose);border:none;border-radius:12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;margin-top:4px;transition:all .2s;box-shadow:0 8px 24px rgba(196,104,90,.35)}
+  .auth-btn:hover{background:#b55849;transform:translateY(-1px)}
+  .auth-err{color:#ff8a80;font-size:12px;text-align:center;margin-top:8px;min-height:18px}
+  .auth-demo{margin-top:20px;text-align:center;color:rgba(255,255,255,.35);font-size:12px}
+  .auth-demo button{background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;margin-top:8px;font-family:'DM Sans',sans-serif;transition:all .2s}
+  .auth-demo button:hover{border-color:var(--gold);color:var(--gold)}
+
+  /* ── APP SHELL ── */
+  #app{display:none;height:100vh;flex-direction:column}
+  #app.visible{display:flex}
+
+  /* ── TOP BAR ── */
+  .topbar{background:var(--white);border-bottom:1px solid rgba(196,104,90,.1);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 12px rgba(28,20,16,.06)}
+  .topbar-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--ink)}
+  .topbar-logo span{color:var(--rose);font-style:italic}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .topbar-btn{background:var(--rose);color:#fff;border:none;padding:9px 18px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+  .topbar-btn:hover{background:#b55849}
+  .avatar-btn{width:36px;height:36px;background:var(--petal);border:none;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .avatar-btn:hover{background:var(--blush)}
+
+  /* ── CONTENT AREA ── */
+  .content-area{display:flex;flex:1;overflow:hidden}
+
+  /* ── SIDEBAR ── */
+  .sidebar{width:220px;background:var(--white);border-right:1px solid rgba(196,104,90,.08);padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;overflow-y:auto}
+  .sidebar-section{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(122,92,82,.5);padding:12px 10px 6px;font-weight:500}
+  .sidebar-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;color:var(--warm);transition:all .2s;border:none;background:none;width:100%;text-align:left}
+  .sidebar-item:hover{background:var(--soft);color:var(--ink)}
+  .sidebar-item.active{background:var(--petal);color:var(--rose);font-weight:500}
+  .sidebar-item .si-icon{font-size:16px;width:22px;text-align:center}
+  .sidebar-item .si-count{margin-left:auto;background:var(--petal);color:var(--rose);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+  .sidebar-item.active .si-count{background:var(--rose);color:#fff}
+  .sidebar-divider{height:1px;background:rgba(196,104,90,.1);margin:8px 10px}
+
+  /* ── MAIN ── */
+  .main{flex:1;overflow-y:auto;padding:24px}
+
+  /* ── SEARCH + FILTER BAR ── */
+  .search-bar{display:flex;gap:10px;margin-bottom:20px;align-items:center}
+  .search-wrap{flex:1;position:relative}
+  .search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.4}
+  .search-input{width:100%;padding:11px 14px 11px 40px;background:var(--white);border:1.5px solid rgba(196,104,90,.15);border-radius:50px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;box-shadow:var(--shadow)}
+  .search-input:focus{border-color:var(--rose)}
+  .search-input::placeholder{color:rgba(122,92,82,.45)}
+  .filter-pills{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .pill{padding:7px 16px;border-radius:50px;font-size:12.5px;border:1.5px solid rgba(196,104,90,.18);color:var(--warm);background:var(--white);cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+  .pill:hover{border-color:var(--rose);color:var(--rose)}
+  .pill.active{background:var(--rose);border-color:var(--rose);color:#fff;box-shadow:0 4px 14px rgba(196,104,90,.3)}
+
+  /* ── STATS ROW ── */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .stat-card{background:var(--white);border-radius:16px;padding:16px 18px;border:1px solid rgba(196,104,90,.08);box-shadow:var(--shadow);transition:transform .2s}
+  .stat-card:hover{transform:translateY(-2px)}
+  .stat-num{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--rose);line-height:1}
+  .stat-lbl{font-size:11px;color:var(--warm);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+
+  /* ── GRID ── */
+  .posts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+  .post-card{background:var(--white);border-radius:18px;overflow:hidden;border:1px solid rgba(196,104,90,.08);box-shadow:var(--shadow);cursor:pointer;transition:all .25s;animation:fadeUp .4s ease both}
+  .post-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-lg)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .card-thumb{height:150px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative}
+  .card-plat{position:absolute;top:10px;left:10px;font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;backdrop-filter:blur(8px)}
+  .card-ai{position:absolute;top:10px;right:10px;background:rgba(200,164,106,.9);color:#fff;font-size:9px;padding:3px 8px;border-radius:20px;font-weight:500;letter-spacing:.04em}
+  .card-body{padding:14px 16px 16px}
+  .card-cat{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--rose);margin-bottom:5px;font-weight:500}
+  .card-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;line-height:1.3;margin-bottom:8px;color:var(--ink)}
+  .card-meta{display:flex;justify-content:space-between;font-size:11px;color:rgba(122,92,82,.6)}
+  .card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+  .chip{background:var(--soft);color:var(--warm);font-size:10px;padding:3px 8px;border-radius:20px}
+  .card-actions{display:flex;gap:8px;margin-top:10px}
+  .card-action-btn{flex:1;padding:7px;border:1px solid rgba(196,104,90,.2);background:none;border-radius:8px;font-size:11px;color:var(--warm);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+  .card-action-btn:hover{background:var(--petal);color:var(--rose);border-color:var(--rose)}
+  .card-action-btn.fav{background:var(--petal);color:var(--rose)}
+
+  /* ── EMPTY STATE ── */
+  .empty{text-align:center;padding:80px 20px;color:var(--warm)}
+  .empty-icon{font-size:52px;margin-bottom:16px;opacity:.5}
+  .empty h3{font-family:'Playfair Display',serif;font-size:22px;color:var(--ink);margin-bottom:8px}
+  .empty p{font-size:14px;opacity:.7;max-width:300px;margin:0 auto 24px;line-height:1.6}
+  .empty-btn{background:var(--rose);color:#fff;border:none;padding:12px 28px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;font-weight:500}
+
+  /* ── ADD POST MODAL ── */
+  .modal-bg{position:fixed;inset:0;background:rgba(28,20,16,.55);backdrop-filter:blur(6px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s}
+  .modal-bg.open{opacity:1;pointer-events:all}
+  .modal{background:var(--cream);border-radius:24px;padding:36px;width:100%;max-width:460px;transform:scale(.92);transition:transform .3s;box-shadow:var(--shadow-lg)}
+  .modal-bg.open .modal{transform:scale(1)}
+  .modal h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin-bottom:6px}
+  .modal-sub{font-size:13px;color:var(--warm);margin-bottom:24px}
+  .modal-input{width:100%;padding:13px 16px;background:var(--white);border:1.5px solid rgba(196,104,90,.18);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;margin-bottom:12px;transition:border-color .2s}
+  .modal-input:focus{border-color:var(--rose)}
+  .modal-input::placeholder{color:rgba(122,92,82,.4)}
+  .modal-select{width:100%;padding:13px 16px;background:var(--white);border:1.5px solid rgba(196,104,90,.18);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;margin-bottom:12px;appearance:none;cursor:pointer}
+  .modal-select:focus{border-color:var(--rose)}
+  .modal-row{display:flex;gap:10px}
+  .modal-row .modal-select{flex:1}
+  .modal-footer{display:flex;gap:10px;margin-top:8px}
+  .modal-cancel{flex:1;padding:13px;border:1.5px solid rgba(196,104,90,.2);background:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--warm);cursor:pointer;transition:all .2s}
+  .modal-cancel:hover{border-color:var(--rose);color:var(--rose)}
+  .modal-save{flex:2;padding:13px;background:var(--rose);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;cursor:pointer;transition:all .2s;box-shadow:0 6px 20px rgba(196,104,90,.3)}
+  .modal-save:hover{background:#b55849}
+  .modal-save:disabled{opacity:.5;cursor:not-allowed}
+  .ai-thinking{display:none;align-items:center;gap:10px;background:rgba(196,104,90,.08);border:1px solid rgba(196,104,90,.2);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:var(--rose)}
+  .ai-thinking.show{display:flex}
+  .ai-dot{width:8px;height:8px;background:var(--rose);border-radius:50%;animation:pulse .8s ease infinite}
+  .ai-dot:nth-child(2){animation-delay:.2s}
+  .ai-dot:nth-child(3){animation-delay:.4s}
+  @keyframes pulse{0%,100%{transform:scale(.6);opacity:.4}50%{transform:scale(1);opacity:1}}
+
+  /* ── DETAIL MODAL ── */
+  .detail-modal{max-width:520px}
+  .detail-thumb{height:200px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:20px;position:relative}
+  .detail-badges{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .badge{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500}
+  .detail-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:8px}
+  .detail-url{font-size:13px;color:var(--rose);margin-bottom:16px;word-break:break-all}
+  .detail-url a{color:var(--rose);text-decoration:none}
+  .detail-url a:hover{text-decoration:underline}
+  .detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .detail-meta-item{background:var(--soft);border-radius:10px;padding:10px 14px}
+  .detail-meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--warm);margin-bottom:3px}
+  .detail-meta-value{font-size:13px;font-weight:500;color:var(--ink)}
+  .detail-notes{width:100%;padding:12px 14px;background:var(--soft);border:1.5px solid rgba(196,104,90,.15);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;resize:vertical;min-height:80px;margin-bottom:16px}
+  .detail-actions{display:flex;gap:10px}
+  .detail-action{flex:1;padding:12px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+  .da-close{background:none;border:1.5px solid rgba(196,104,90,.2);color:var(--warm)}
+  .da-close:hover{border-color:var(--rose);color:var(--rose)}
+  .da-open{background:var(--rose);border:none;color:#fff;box-shadow:0 6px 20px rgba(196,104,90,.3)}
+  .da-open:hover{background:#b55849}
+  .da-delete{background:none;border:1.5px solid rgba(196,104,90,.2);color:#e57373;max-width:44px;padding:12px 10px}
+  .da-delete:hover{background:#fff0f0;border-color:#e57373}
+
+  /* ── TOAST ── */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 24px;border-radius:50px;font-size:13px;z-index:9999;transition:transform .3s;white-space:nowrap;box-shadow:var(--shadow-lg)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+
+  /* ── PROFILE PANEL ── */
+  .profile-panel{position:fixed;top:0;right:-320px;width:300px;height:100vh;background:var(--white);box-shadow:-4px 0 32px rgba(28,20,16,.12);z-index:400;padding:32px 24px;transition:right .3s;overflow-y:auto}
+  .profile-panel.open{right:0}
+  .profile-close{position:absolute;top:20px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--warm)}
+  .profile-avatar{width:72px;height:72px;background:var(--petal);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:12px}
+  .profile-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:4px}
+  .profile-email{font-size:13px;color:var(--warm);margin-bottom:24px}
+  .profile-stat{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--soft)}
+  .profile-stat-label{font-size:13px;color:var(--warm)}
+  .profile-stat-val{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--rose)}
+  .profile-signout{width:100%;margin-top:24px;padding:13px;background:none;border:1.5px solid rgba(196,104,90,.25);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--warm);cursor:pointer;transition:all .2s}
+  .profile-signout:hover{border-color:var(--rose);color:var(--rose)}
+
+  /* ── MOBILE NAV ── */
+  .mobile-nav{display:none;background:var(--white);border-top:1px solid rgba(196,104,90,.1);padding:8px 0 12px;flex-shrink:0}
+  .mobile-nav-items{display:flex;justify-content:space-around}
+  .mobile-nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 12px;border:none;background:none;cursor:pointer;color:var(--warm);font-size:10px;font-family:'DM Sans',sans-serif;border-radius:10px;transition:color .2s}
+  .mobile-nav-item.active{color:var(--rose)}
+  .mobile-nav-item svg,.mobile-nav-item span.icon{font-size:20px}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:768px){
+    .sidebar{display:none}
+    .stats-row{grid-template-columns:repeat(2,1fr)}
+    .mobile-nav{display:block}
+    .main{padding:16px}
+    .posts-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  }
+  @media(max-width:480px){
+    .stats-row{grid-template-columns:repeat(2,1fr)}
+    .posts-grid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-logo">Glow<span>Vault</span></div>
+  <div class="auth-sub">Your Beauty Library</div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login">Sign In</button>
+      <button class="auth-tab" id="tab-signup">Sign Up</button>
+    </div>
+    <div id="auth-form">
+      <input class="auth-input" id="auth-name" type="text" placeholder="Your name" style="display:none">
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email address">
+      <input class="auth-input" id="auth-password" type="password" placeholder="Password">
+      <button class="auth-btn" id="auth-submit-btn">Sign In ✦</button>
+      <div class="auth-err" id="auth-err"></div>
+    </div>
+    <div class="auth-demo">
+      <div>Just want to explore first?</div>
+      <button id="demo-btn">Try Demo Account ✦</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">Glow<span>Vault</span></div>
+    <div class="topbar-right">
+      <button class="topbar-btn" onclick="openAddModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Save Post
+      </button>
+      <button class="avatar-btn" id="avatar-btn" onclick="toggleProfile()">💄</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-section">Library</div>
+      <button class="sidebar-item active" data-filter="all" onclick="setCategory(this,'all')"><span class="si-icon">✦</span> All Saved <span class="si-count" id="cnt-all">0</span></button>
+      <button class="sidebar-item" data-filter="Tutorial" onclick="setCategory(this,'Tutorial')"><span class="si-icon">🎬</span> Tutorials <span class="si-count" id="cnt-Tutorial">0</span></button>
+      <button class="sidebar-item" data-filter="Skincare" onclick="setCategory(this,'Skincare')"><span class="si-icon">✨</span> Skincare <span class="si-count" id="cnt-Skincare">0</span></button>
+      <button class="sidebar-item" data-filter="Routine" onclick="setCategory(this,'Routine')"><span class="si-icon">🌙</span> Routines <span class="si-count" id="cnt-Routine">0</span></button>
+      <button class="sidebar-item" data-filter="Product Rec" onclick="setCategory(this,'Product Rec')"><span class="si-icon">💄</span> Products <span class="si-count" id="cnt-Product Rec">0</span></button>
+      <button class="sidebar-item" data-filter="Nails" onclick="setCategory(this,'Nails')"><span class="si-icon">💅</span> Nails <span class="si-count" id="cnt-Nails">0</span></button>
+      <button class="sidebar-item" data-filter="GRWM" onclick="setCategory(this,'GRWM')"><span class="si-icon">🌸</span> GRWM <span class="si-count" id="cnt-GRWM">0</span></button>
+      <button class="sidebar-item" data-filter="Hair" onclick="setCategory(this,'Hair')"><span class="si-icon">💇</span> Hair <span class="si-count" id="cnt-Hair">0</span></button>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">Collections</div>
+      <button class="sidebar-item" data-filter="fav" onclick="setCategory(this,'fav')"><span class="si-icon">🔖</span> Favorites <span class="si-count" id="cnt-fav">0</span></button>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main" id="main-content">
+      <!-- Stats -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-num" id="s-total">0</div><div class="stat-lbl">Saved Posts</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-tutorials">0</div><div class="stat-lbl">Tutorials</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-routines">0</div><div class="stat-lbl">Routines</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-products">0</div><div class="stat-lbl">Products</div></div>
+      </div>
+
+      <!-- Search + Filters -->
+      <div class="search-bar">
+        <div class="search-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9b7e78" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="search-input" id="search-input" placeholder="Search tutorials, products, creators..." oninput="renderGrid()">
+        </div>
+      </div>
+      <div class="filter-pills" id="platform-pills">
+        <span class="pill active" data-plat="all" onclick="setPlatform(this,'all')">All Platforms</span>
+        <span class="pill" data-plat="Instagram" onclick="setPlatform(this,'Instagram')" style="color:#e1306c;border-color:#e1306c33">Instagram</span>
+        <span class="pill" data-plat="TikTok" onclick="setPlatform(this,'TikTok')" style="color:#69C9D0;border-color:#69C9D033">TikTok</span>
+        <span class="pill" data-plat="YouTube" onclick="setPlatform(this,'YouTube')" style="color:#ff0000;border-color:#ff000033">YouTube</span>
+        <span class="pill" data-plat="Pinterest" onclick="setPlatform(this,'Pinterest')" style="color:#E60023;border-color:#E6002333">Pinterest</span>
+        <span class="pill" data-plat="Other" onclick="setPlatform(this,'Other')">Other</span>
+      </div>
+
+      <!-- Grid -->
+      <div class="posts-grid" id="posts-grid"></div>
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-items">
+      <button class="mobile-nav-item active" onclick="mobileNav(this,'all')"><span class="icon">✦</span><span>All</span></button>
+      <button class="mobile-nav-item" onclick="mobileNav(this,'Tutorial')"><span class="icon">🎬</span><span>Tutorials</span></button>
+      <button class="mobile-nav-item" onclick="mobileNav(this,'Skincare')"><span class="icon">✨</span><span>Skincare</span></button>
+      <button class="mobile-nav-item add-btn" onclick="openAddModal()"><span class="icon">＋</span><span>Save</span></button>
+      <button class="mobile-nav-item" onclick="mobileNav(this,'fav')"><span class="icon">🔖</span><span>Saved</span></button>
+    </div>
+  </nav>
+</div>
+
+<!-- ADD POST MODAL -->
+<div class="modal-bg" id="add-modal">
+  <div class="modal">
+    <h2>Save a Beauty Post ✦</h2>
+    <div class="modal-sub">Paste any link — AI will tag it automatically</div>
+    <input class="modal-input" id="post-url" type="url" placeholder="https://www.tiktok.com/...">
+    <input class="modal-input" id="post-title" placeholder="Title (or leave blank — AI will suggest one)">
+    <div class="modal-row">
+      <select class="modal-select" id="post-platform">
+        <option value="">Platform...</option>
+        <option>Instagram</option><option>TikTok</option><option>YouTube</option>
+        <option>Pinterest</option><option>Lemon8</option><option>X (Twitter)</option><option>Other</option>
+      </select>
+      <select class="modal-select" id="post-category">
+        <option value="">Category (AI will detect)</option>
+        <option>Tutorial</option><option>Skincare</option><option>Routine</option>
+        <option>Product Rec</option><option>Nails</option><option>GRWM</option><option>Hair</option><option>Other</option>
+      </select>
+    </div>
+    <input class="modal-input" id="post-tags" placeholder="Tags (comma separated): glass skin, K-beauty...">
+    <div class="ai-thinking" id="ai-thinking">
+      <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+      <span>AI is reading your post...</span>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="modal-save" id="save-btn" onclick="savePost()">✦ Save to Vault</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal detail-modal" id="detail-content"></div>
+</div>
+
+<!-- PROFILE PANEL -->
+<div class="profile-panel" id="profile-panel">
+  <button class="profile-close" onclick="toggleProfile()">✕</button>
+  <div class="profile-avatar" id="profile-avatar">💄</div>
+  <div class="profile-name" id="profile-name">—</div>
+  <div class="profile-email" id="profile-email">—</div>
+  <div class="profile-stat"><span class="profile-stat-label">Total saved</span><span class="profile-stat-val" id="p-total">0</span></div>
+  <div class="profile-stat"><span class="profile-stat-label">Tutorials</span><span class="profile-stat-val" id="p-tut">0</span></div>
+  <div class="profile-stat"><span class="profile-stat-label">Skincare posts</span><span class="profile-stat-val" id="p-skin">0</span></div>
+  <div class="profile-stat"><span class="profile-stat-label">Favorites</span><span class="profile-stat-val" id="p-fav">0</span></div>
+  <button class="profile-signout" onclick="signOut()">Sign Out</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let currentUser = null;
+let posts = [];
+let activeCategory = 'all';
+let activePlatform = 'all';
+let authMode = 'login';
+
+// ── STORAGE HELPERS ────────────────────────────────────────────────────────
+function saveToStorage() {
+  if (!currentUser) return;
+  localStorage.setItem(`gv_posts_${currentUser.email}`, JSON.stringify(posts));
+  localStorage.setItem(`gv_user_${currentUser.email}`, JSON.stringify(currentUser));
+}
+
+function loadFromStorage(email) {
+  const p = localStorage.getItem(`gv_posts_${email}`);
+  return p ? JSON.parse(p) : [];
+}
+
+function getUsers() {
+  const u = localStorage.getItem('gv_users');
+  return u ? JSON.parse(u) : {};
+}
+
+function saveUsers(users) {
+  localStorage.setItem('gv_users', JSON.stringify(users));
+}
+
+// ── AUTH ───────────────────────────────────────────────────────────────────
+function switchAuth(mode) {
+  authMode = mode;
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&mode==='login')||(i===1&&mode==='signup')));
+  document.getElementById('auth-name').style.display = mode === 'signup' ? 'block' : 'none';
+  document.querySelector('.auth-btn').textContent = mode === 'login' ? 'Sign In ✦' : 'Create Account ✦';
+  document.getElementById('auth-err').textContent = '';
+}
+
+function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const name = document.getElementById('auth-name').value.trim();
+  const err = document.getElementById('auth-err');
+
+  if (!email || !email.includes('@')) { err.textContent = 'Please enter a valid email.'; return; }
+  if (password.length < 6) { err.textContent = 'Password must be at least 6 characters.'; return; }
+
+  const users = getUsers();
+
+  if (authMode === 'signup') {
+    if (!name) { err.textContent = 'Please enter your name.'; return; }
+    if (users[email]) { err.textContent = 'Account already exists. Sign in instead.'; return; }
+    users[email] = { email, name, password, joined: new Date().toISOString() };
+    saveUsers(users);
+    loginUser({ email, name });
+  } else {
+    if (!users[email]) { err.textContent = 'No account found. Sign up first!'; return; }
+    if (users[email].password !== password) { err.textContent = 'Wrong password. Try again.'; return; }
+    loginUser(users[email]);
+  }
+}
+
+function demoLogin() {
+  const users = getUsers();
+  const demoEmail = 'demo@glowvault.app';
+  if (!users[demoEmail]) {
+    users[demoEmail] = { email: demoEmail, name: 'Beauty Lover', password: 'demo123', joined: new Date().toISOString() };
+    saveUsers(users);
+    // seed demo posts
+    localStorage.setItem(`gv_posts_${demoEmail}`, JSON.stringify(DEMO_POSTS));
+  }
+  loginUser(users[demoEmail]);
+}
+
+function loginUser(user) {
+  currentUser = user;
+  posts = loadFromStorage(user.email);
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('profile-name').textContent = user.name;
+  document.getElementById('profile-email').textContent = user.email;
+  document.getElementById('avatar-btn').textContent = user.name[0].toUpperCase();
+  refreshAll();
+  showToast(`Welcome back, ${user.name.split(' ')[0]}! 🌸`);
+}
+
+function signOut() {
+  currentUser = null; posts = [];
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('profile-panel').classList.remove('open');
+}
+
+// ── ADD / SAVE POST ────────────────────────────────────────────────────────
+function openAddModal() { document.getElementById('add-modal').classList.add('open'); document.getElementById('post-url').focus(); }
+function closeAddModal() {
+  document.getElementById('add-modal').classList.remove('open');
+  ['post-url','post-title','post-tags'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('post-platform').value = '';
+  document.getElementById('post-category').value = '';
+  document.getElementById('ai-thinking').classList.remove('show');
+  document.getElementById('save-btn').disabled = false;
+}
+
+async function savePost() {
+  const url = document.getElementById('post-url').value.trim();
+  const title = document.getElementById('post-title').value.trim();
+  const platform = document.getElementById('post-platform').value;
+  const manualCat = document.getElementById('post-category').value;
+  const tags = document.getElementById('post-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+
+  if (!url) { showToast('Please paste a URL first!'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+
+  // Detect platform from URL if not set
+  const detectedPlatform = platform || detectPlatform(url);
+
+  // AI categorization
+  let category = manualCat;
+  let aiTitle = title;
+
+  if (!category || !title) {
+    document.getElementById('ai-thinking').classList.add('show');
+    try {
+      const result = await aiTagPost(url, title, detectedPlatform);
+      if (!category) category = result.category;
+      if (!aiTitle) aiTitle = result.title;
+    } catch(e) {
+      category = category || 'Other';
+      aiTitle = aiTitle || extractTitleFromUrl(url);
+    }
+    document.getElementById('ai-thinking').classList.remove('show');
+  }
+
+  const post = {
+    id: Date.now().toString(),
+    url,
+    title: aiTitle || extractTitleFromUrl(url),
+    platform: detectedPlatform,
+    category: category || 'Other',
+    tags,
+    savedAt: new Date().toISOString(),
+    favorite: false,
+    notes: '',
+    emoji: categoryEmoji(category || 'Other'),
+    bg: categoryBg(category || 'Other'),
+    aiTagged: !manualCat,
+  };
+
+  posts.unshift(post);
+  saveToStorage();
+  refreshAll();
+  closeAddModal();
+  showToast(`✦ Saved to ${post.category}!`);
+}
+
+// ── AI TAGGING ─────────────────────────────────────────────────────────────
+async function aiTagPost(url, existingTitle, platform) {
+  // Try to use the Anthropic API
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: `You are a beauty content classifier for the GlowVault app.
+
+Given this social media post URL: ${url}
+Platform: ${platform}
+Existing title (if any): ${existingTitle || 'none'}
+
+Respond ONLY with valid JSON, no other text:
+{"category": "<one of: Tutorial|Skincare|Routine|Product Rec|Nails|GRWM|Hair|Other>", "title": "<a short, catchy 4-8 word title for this beauty post>"}`
+        }]
+      })
+    });
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+    return JSON.parse(text);
+  } catch(e) {
+    // Fallback: smart local detection
+    return localTagPost(url, existingTitle, platform);
+  }
+}
+
+function localTagPost(url, title, platform) {
+  const text = (url + ' ' + (title||'')).toLowerCase();
+  let category = 'Other';
+  if (/tutorial|how.to|step.by.step|look|makeup|glam|eye|lip|contour|blush|foundation/.test(text)) category = 'Tutorial';
+  else if (/skin|serum|moistur|toner|spf|sunscreen|pore|acne|glow|glass skin|cleanser/.test(text)) category = 'Skincare';
+  else if (/routine|morning|night|pm|am|daily|everyday/.test(text)) category = 'Routine';
+  else if (/product|review|dupe|drugstore|sephora|ulta|holy grail|buy|haul|recommend/.test(text)) category = 'Product Rec';
+  else if (/nail|mani|pedi|gel|press.on|aura nail/.test(text)) category = 'Nails';
+  else if (/grwm|get ready|vlog|day in/.test(text)) category = 'GRWM';
+  else if (/hair|shampoo|conditioner|blowout|curl|braid|dyeing|color/.test(text)) category = 'Hair';
+
+  const titles = { Tutorial:'Beauty Tutorial', Skincare:'Skincare Tip', Routine:'Daily Routine', 'Product Rec':'Product Review', Nails:'Nail Art', GRWM:'Get Ready With Me', Hair:'Hair Tutorial', Other:'Beauty Post' };
+  return { category, title: title || titles[category] };
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function detectPlatform(url) {
+  if (/instagram\.com/.test(url)) return 'Instagram';
+  if (/tiktok\.com/.test(url)) return 'TikTok';
+  if (/youtube\.com|youtu\.be/.test(url)) return 'YouTube';
+  if (/pinterest\.com/.test(url)) return 'Pinterest';
+  if (/twitter\.com|x\.com/.test(url)) return 'X (Twitter)';
+  if (/lemon8/.test(url)) return 'Lemon8';
+  return 'Other';
+}
+
+function extractTitleFromUrl(url) {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    return parts[parts.length-1]?.replace(/[-_]/g,' ') || 'Beauty Post';
+  } catch { return 'Beauty Post'; }
+}
+
+function categoryEmoji(cat) {
+  return {Tutorial:'💄',Skincare:'✨',Routine:'🌙','Product Rec':'🛍️',Nails:'💅',GRWM:'🌸',Hair:'💇',Other:'⭐'}[cat] || '⭐';
+}
+
+function categoryBg(cat) {
+  return {Tutorial:'#F9E4E4',Skincare:'#E8F5F0',Routine:'#EDE8F5','Product Rec':'#FFF5E0',Nails:'#F0E8F5',GRWM:'#FCE4EE',Hair:'#E8EFF5',Other:'#F0F0F0'}[cat] || '#F0F0F0';
+}
+
+function platColor(p) {
+  return {Instagram:'rgba(225,48,108,0.15)',TikTok:'rgba(105,201,208,0.15)',YouTube:'rgba(255,0,0,0.12)',Pinterest:'rgba(230,0,35,0.12)','X (Twitter)':'rgba(0,0,0,0.07)',Lemon8:'rgba(255,215,0,0.15)',Other:'rgba(122,92,82,0.1)'}[p] || 'rgba(122,92,82,0.1)';
+}
+function platText(p) {
+  return {Instagram:'#e1306c',TikTok:'#3ac4cc',YouTube:'#ff0000',Pinterest:'#E60023','X (Twitter)':'#555',Lemon8:'#b8970a',Other:'#7A5C52'}[p] || '#7A5C52';
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function getFilteredPosts() {
+  const q = document.getElementById('search-input')?.value.toLowerCase() || '';
+  return posts.filter(p => {
+    if (activeCategory === 'fav' && !p.favorite) return false;
+    if (activeCategory !== 'all' && activeCategory !== 'fav' && p.category !== activeCategory) return false;
+    if (activePlatform !== 'all' && p.platform !== activePlatform) return false;
+    if (q && !p.title.toLowerCase().includes(q) && !p.tags.join(' ').toLowerCase().includes(q) && !p.category.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('posts-grid');
+  const filtered = getFilteredPosts();
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">${activeCategory==='fav'?'🔖':'✨'}</div>
+      <h3>${activeCategory==='fav'?'No favorites yet':'Nothing here yet'}</h3>
+      <p>${activeCategory==='fav'?'Tap the bookmark on any post to favorite it.':'Save your first beauty post to get started!'}</p>
+      ${activeCategory!=='fav'?`<button class="empty-btn" onclick="openAddModal()">+ Save a Post</button>`:''}
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((p,i) => `
+    <div class="post-card" style="animation-delay:${i*.05}s" onclick="openDetail('${p.id}')">
+      <div class="card-thumb" style="background:${p.bg}">
+        <span>${p.emoji}</span>
+        <span class="card-plat" style="background:${platColor(p.platform)};color:${platText(p.platform)}">${p.platform}</span>
+        ${p.aiTagged?`<span class="card-ai">AI ✦</span>`:''}
+      </div>
+      <div class="card-body">
+        <div class="card-cat">${p.category}</div>
+        <div class="card-title">${p.title}</div>
+        <div class="card-meta">
+          <span>${timeAgo(p.savedAt)}</span>
+        </div>
+        ${p.tags.length?`<div class="card-tags">${p.tags.slice(0,3).map(t=>`<span class="chip">#${t}</span>`).join('')}</div>`:''}
+        <div class="card-actions" onclick="event.stopPropagation()">
+          <button class="card-action-btn ${p.favorite?'fav':''}" onclick="toggleFav('${p.id}')">${p.favorite?'🔖 Saved':'🔖 Save'}</button>
+          <button class="card-action-btn" onclick="window.open('${p.url}','_blank')">↗ Open</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function refreshAll() {
+  renderGrid();
+  updateCounts();
+  updateStats();
+  updateProfile();
+}
+
+function updateCounts() {
+  const cats = ['all','Tutorial','Skincare','Routine','Product Rec','Nails','GRWM','Hair','fav'];
+  cats.forEach(cat => {
+    const el = document.getElementById(`cnt-${cat}`);
+    if (el) el.textContent = cat==='all' ? posts.length : cat==='fav' ? posts.filter(p=>p.favorite).length : posts.filter(p=>p.category===cat).length;
+  });
+}
+
+function updateStats() {
+  document.getElementById('s-total').textContent = posts.length;
+  document.getElementById('s-tutorials').textContent = posts.filter(p=>p.category==='Tutorial').length;
+  document.getElementById('s-routines').textContent = posts.filter(p=>p.category==='Routine').length;
+  document.getElementById('s-products').textContent = posts.filter(p=>p.category==='Product Rec').length;
+}
+
+function updateProfile() {
+  document.getElementById('p-total').textContent = posts.length;
+  document.getElementById('p-tut').textContent = posts.filter(p=>p.category==='Tutorial').length;
+  document.getElementById('p-skin').textContent = posts.filter(p=>p.category==='Skincare').length;
+  document.getElementById('p-fav').textContent = posts.filter(p=>p.favorite).length;
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+function setCategory(el, cat) {
+  activeCategory = cat;
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function setPlatform(el, plat) {
+  activePlatform = plat;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function mobileNav(el, cat) {
+  document.querySelectorAll('.mobile-nav-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  activeCategory = cat;
+  renderGrid();
+}
+
+// ── POST DETAIL ────────────────────────────────────────────────────────────
+function openDetail(id) {
+  const p = posts.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-thumb" style="background:${p.bg}"><span>${p.emoji}</span></div>
+    <div class="detail-badges">
+      <span class="badge" style="background:${platColor(p.platform)};color:${platText(p.platform)}">${p.platform}</span>
+      <span class="badge" style="background:var(--petal);color:var(--rose)">${p.category}</span>
+      ${p.aiTagged?`<span class="badge" style="background:rgba(200,164,106,.15);color:var(--gold)">AI Tagged ✦</span>`:''}
+      ${p.favorite?`<span class="badge" style="background:var(--petal);color:var(--rose)">🔖 Favorite</span>`:''}
+    </div>
+    <div class="detail-title">${p.title}</div>
+    <div class="detail-url"><a href="${p.url}" target="_blank">${p.url}</a></div>
+    <div class="detail-meta">
+      <div class="detail-meta-item"><div class="detail-meta-label">Saved</div><div class="detail-meta-value">${new Date(p.savedAt).toLocaleDateString()}</div></div>
+      <div class="detail-meta-item"><div class="detail-meta-label">Category</div><div class="detail-meta-value">${p.category}</div></div>
+    </div>
+    ${p.tags.length?`<div class="card-tags" style="margin-bottom:16px">${p.tags.map(t=>`<span class="chip">#${t}</span>`).join('')}</div>`:''}
+    <textarea class="detail-notes" placeholder="Add personal notes..." oninput="updateNotes('${p.id}',this.value)">${p.notes||''}</textarea>
+    <div class="detail-actions">
+      <button class="detail-action da-close" onclick="closeDetail()">Close</button>
+      <button class="detail-action da-close" onclick="toggleFav('${p.id}');closeDetail()">${p.favorite?'🔖 Unfavorite':'🔖 Favorite'}</button>
+      <button class="detail-action da-open" onclick="window.open('${p.url}','_blank')">↗ Open Post</button>
+      <button class="detail-action da-delete" onclick="deletePost('${p.id}')" title="Delete">🗑</button>
+    </div>`;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeDetail() { document.getElementById('detail-modal').classList.remove('open'); }
+
+function updateNotes(id, val) {
+  const p = posts.find(x=>x.id===id);
+  if (p) { p.notes = val; saveToStorage(); }
+}
+
+function toggleFav(id) {
+  const p = posts.find(x=>x.id===id);
+  if (p) { p.favorite = !p.favorite; saveToStorage(); refreshAll(); showToast(p.favorite?'🔖 Added to favorites!':'Removed from favorites'); }
+}
+
+function deletePost(id) {
+  if (!confirm('Delete this post from your vault?')) return;
+  posts = posts.filter(x=>x.id!==id);
+  saveToStorage(); refreshAll(); closeDetail();
+  showToast('Post deleted.');
+}
+
+// ── UI HELPERS ─────────────────────────────────────────────────────────────
+function toggleProfile() { document.getElementById('profile-panel').classList.toggle('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso);
+  const m=Math.floor(diff/60000),h=Math.floor(m/60),d=Math.floor(h/24);
+  if (d>0) return d+'d ago'; if (h>0) return h+'h ago'; if (m>0) return m+'m ago'; return 'Just now';
+}
+
+// Close modals on bg click
+document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAddModal()});
+document.getElementById('detail-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeDetail()});
+
+// ── INIT — wire everything up by ID, guaranteed to work ───────────────────
+window.addEventListener('load', () => {
+
+  // Auth tabs
+  document.getElementById('tab-login').addEventListener('click', () => switchAuth('login'));
+  document.getElementById('tab-signup').addEventListener('click', () => switchAuth('signup'));
+
+  // Submit button
+  document.getElementById('auth-submit-btn').addEventListener('click', handleAuth);
+
+  // Demo button
+  document.getElementById('demo-btn').addEventListener('click', demoLogin);
+
+  // Enter key on email/password
+  document.getElementById('auth-email').addEventListener('keydown', e => { if(e.key==='Enter') handleAuth(); });
+  document.getElementById('auth-password').addEventListener('keydown', e => { if(e.key==='Enter') handleAuth(); });
+
+  // Enter key on URL input in add modal
+  const urlInput = document.getElementById('post-url');
+  if (urlInput) urlInput.addEventListener('keydown', e => { if(e.key==='Enter') savePost(); });
+});
+
+// ── DEMO DATA ──────────────────────────────────────────────────────────────
+const DEMO_POSTS = [
+  {id:'d1',url:'https://www.tiktok.com/@glossbylaura',title:'Glazed Lip Tutorial for Summer',platform:'TikTok',category:'Tutorial',tags:['lip gloss','summer'],savedAt:new Date(Date.now()-172800000).toISOString(),favorite:true,notes:'Love this look!',emoji:'💄',bg:'#F9E4E4',aiTagged:true},
+  {id:'d2',url:'https://www.instagram.com/p/example',title:'Glass Skin 5-Step Korean Routine',platform:'Instagram',category:'Skincare',tags:['glass skin','K-beauty','AM routine'],savedAt:new Date(Date.now()-259200000).toISOString(),favorite:false,notes:'',emoji:'✨',bg:'#E8F5F0',aiTagged:true},
+  {id:'d3',url:'https://www.youtube.com/watch?v=example',title:'Soft Glam Eye No Foundation',platform:'YouTube',category:'Tutorial',tags:['soft glam','no-foundation'],savedAt:new Date(Date.now()-432000000).toISOString(),favorite:false,notes:'',emoji:'💄',bg:'#F9E4E4',aiTagged:false},
+  {id:'d4',url:'https://www.tiktok.com/@skincarewithjess',title:'PM Skincare Routine Sensitive Skin',platform:'TikTok',category:'Routine',tags:['night routine','sensitive','barrier'],savedAt:new Date(Date.now()-604800000).toISOString(),favorite:true,notes:'',emoji:'🌙',bg:'#EDE8F5',aiTagged:true},
+  {id:'d5',url:'https://www.instagram.com/p/nails',title:'Aura Nails DIY at Home',platform:'Instagram',category:'Nails',tags:['nails','aura','DIY'],savedAt:new Date(Date.now()-864000000).toISOString(),favorite:false,notes:'',emoji:'💅',bg:'#F0E8F5',aiTagged:true},
+  {id:'d6',url:'https://www.tiktok.com/@budgetbeauty',title:'Affordable Charlotte Tilbury Dupes',platform:'TikTok',category:'Product Rec',tags:['dupes','drugstore'],savedAt:new Date(Date.now()-1036800000).toISOString(),favorite:false,notes:'',emoji:'🛍️',bg:'#FFF5E0',aiTagged:true},
+  {id:'d7',url:'https://www.youtube.com/watch?v=grwm',title:'Get Ready With Me Date Night',platform:'YouTube',category:'GRWM',tags:['date night','glam'],savedAt:new Date(Date.now()-1296000000).toISOString(),favorite:false,notes:'',emoji:'🌸',bg:'#FCE4EE',aiTagged:true},
+  {id:'d8',url:'https://www.pinterest.com/pin/hair',title:'Heatless Curls Overnight Tutorial',platform:'Pinterest',category:'Hair',tags:['heatless','curls','overnight'],savedAt:new Date(Date.now()-1728000000).toISOString(),favorite:false,notes:'',emoji:'💇',bg:'#E8EFF5',aiTagged:true},
+];
+</script>
+</body>
+</html>
